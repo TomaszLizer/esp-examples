@@ -1,61 +1,70 @@
 | Supported Targets | ESP32-H2 | ESP32-C6 | ESP32-C5 |
 | ----------------- | -------- | -------- | -------- |
 
-# Light Bulb Example 
+# Combined Light and Switch Zigbee Example
 
-This example demonstrates how to configure a Home Automation on/off light on a Zigbee end device.
+This example combines both a Home Automation On/Off Light and On/Off Switch on a single Zigbee end device, allowing it to act as both a controllable light and a physical switch.
+
+## Attribution and Original Sources
+
+Based on two official ESP-Zigbee SDK examples from Espressif Systems:
+
+1. **HA_on_off_light**: [esp-zigbee-sdk/examples/esp_zigbee_HA_sample/HA_on_off_light](https://github.com/espressif/esp-zigbee-sdk/tree/main/examples/esp_zigbee_HA_sample/HA_on_off_light)
+2. **HA_on_off_switch**: [esp-zigbee-sdk/examples/esp_zigbee_HA_sample/HA_on_off_switch](https://github.com/espressif/esp-zigbee-sdk/tree/main/examples/esp_zigbee_HA_sample/HA_on_off_switch)
+
+Original code © 2021-2022 Espressif Systems (Shanghai) CO LTD, Licensed under CC0-1.0
+
+## Key Changes from Original Examples
+
+1. **Simplified LED Control**: Replaced complex `light_driver` with direct GPIO control on GPIO15
+2. **Combined Architecture**: Single board runs both light and switch endpoints:
+   - **Endpoint 10**: On/Off Light (receives commands)
+   - **Endpoint 1**: On/Off Switch (sends commands)
+3. **Dual Functionality**: Device responds to external commands AND can send commands via button press
+4. **Retained Switch Driver**: Uses original button handling with debouncing
 
 ## Hardware Required
 
-* One 802.15.4 enabled development board (e.g., ESP32-H2 or ESP32-C6) running this example.
-* A second board running as a Zigbee coordinator (see [HA_on_off_switch](../HA_on_off_switch/) example)
+* One 802.15.4 enabled development board (ESP32-H2, ESP32-C6, or ESP32-C5)
+* LED connected to GPIO15 (built-in LED on some boards)
+* Boot button on development board (GPIO configured via menuconfig)
+
+## How It Works
+
+The device starts as a Zigbee End Device with two endpoints:
+- **Light endpoint (10)**: Receives ZCL On/Off commands and controls LED on GPIO15
+- **Switch endpoint (1)**: Sends `on_off_toggle` commands when boot button is pressed
+
+For the switch functionality to control the light, both endpoints need to be bound together in the Zigbee network.
 
 ## Configure the project
 
-Before project configuration and build, make sure to set the correct chip target using `idf.py set-target TARGET` command.
+Set the correct chip target: `idf.py set-target TARGET`
 
-## Erase the NVRAM 
-
-Before flash it to the board, it is recommended to erase NVRAM if user doesn't want to keep the previous examples or other projects stored info 
-using `idf.py -p PORT erase-flash`
+The button GPIO is configurable via menuconfig under `Component config` → `Board Support Package`.
 
 ## Build and Flash
 
-Build the project, flash it to the board, and start the monitor tool to view the serial output by running `idf.py -p PORT flash monitor`.
+Erase NVRAM (recommended): `idf.py -p PORT erase-flash`
 
-(To exit the serial monitor, type ``Ctrl-]``.)
+Build and flash: `idf.py build flash monitor`
 
 ## Application Functions
 
-- When the program starts, the board will attempt to detect an available Zigbee network every **1 second** until one is found.
+### Network Joining
 ```
-I (392) main_task: Calling app_main()
-I (412) phy: phy_version: 321,2, 632dc08, Feb 13 2025, 16:29:11
-I (412) phy: libbtbb version: 509a2a6, Feb 13 2025, 16:29:25
-I (422) main_task: Returned from app_main()
-I (432) ESP_ZB_ON_OFF_LIGHT: ZDO signal: ZDO Config Ready (0x17), status: ESP_FAIL
-I (432) ESP_ZB_ON_OFF_LIGHT: Initialize Zigbee stack
-W (442) rmt: channel resolution loss, real=10666666
-I (432) ESP_ZB_ON_OFF_LIGHT: Deferred driver initialization successful
-I (442) ESP_ZB_ON_OFF_LIGHT: Device started up in factory-reset mode
-I (452) ESP_ZB_ON_OFF_LIGHT: Start network steering
-I (3382) ESP_ZB_ON_OFF_LIGHT: Joined network successfully (Extended PAN ID: 74:4d:bd:ff:fe:63:c2:e4, PAN ID: 0x1ce4, Channel:13, Short Address: 0x2638)
+I (432) ESP_ZB_ON_OFF_LIGHT&SWITCH: Initialize Zigbee stack
+I (442) ESP_ZB_ON_OFF_LIGHT&SWITCH: Device started up in factory-reset mode
+I (3382) ESP_ZB_ON_OFF_LIGHT&SWITCH: Joined network successfully
 ```
 
-- If the board is on a network, it acts as a Zigbee end device with the `Home Automation On/Off Light` function.
-
-- If the board receives a `On/Off` command from the joined network, the LED on the board will adjust accordingly.
+### Light Control (Receiving Commands)
 ```
-I (7162) ESP_ZB_ON_OFF_LIGHT: Received message: endpoint(10), cluster(0x6), attribute(0x0), data size(1)
-I (7162) ESP_ZB_ON_OFF_LIGHT: Light sets to On
-I (7742) ESP_ZB_ON_OFF_LIGHT: Received message: endpoint(10), cluster(0x6), attribute(0x0), data size(1)
-I (7742) ESP_ZB_ON_OFF_LIGHT: Light sets to Off
-I (8462) ESP_ZB_ON_OFF_LIGHT: Received message: endpoint(10), cluster(0x6), attribute(0x0), data size(1)
-I (8462) ESP_ZB_ON_OFF_LIGHT: Light sets to On
-I (8932) ESP_ZB_ON_OFF_LIGHT: Received message: endpoint(10), cluster(0x6), attribute(0x0), data size(1)
-I (8932) ESP_ZB_ON_OFF_LIGHT: Light sets to Off
+I (7162) ESP_ZB_ON_OFF_LIGHT&SWITCH: Received message: endpoint(10), cluster(0x6), attribute(0x0), data size(1)
+I (7162) ESP_ZB_ON_OFF_LIGHT&SWITCH: Light sets to On
 ```
 
-## Troubleshooting
-
-For any technical queries, please open an [issue](https://github.com/espressif/esp-zigbee-sdk/issues) on GitHub. We will get back to you soon.
+### Switch Control (Sending Commands)
+```
+I (11743) ESP_ZB_ON_OFF_LIGHT&SWITCH: Send 'on_off toggle' command
+```
